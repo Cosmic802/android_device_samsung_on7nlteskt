@@ -17,9 +17,9 @@ jobs:
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository -y universe multiverse restricted
           sudo apt-get update
-          sudo apt-get install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 python2 libncurses6
+          sudo apt-get install -y git-core gnupg flex bison build-essential zip curl zlib1g-dev gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses-dev libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig python3 libncurses6
 
-      - name: Fix libtinfo.so.5 and python symlink for legacy build
+      - name: Fix libtinfo.so.5 for legacy prebuilt clang
         run: |
           LIB_SRC=$(find /usr/lib /lib -name "libtinfo.so.6*" -o -name "libncurses.so.6*" 2>/dev/null | head -n 1)
           echo "Using library: $LIB_SRC"
@@ -27,9 +27,6 @@ jobs:
             sudo ln -sf "$LIB_SRC" /usr/lib/x86_64-linux-gnu/libtinfo.so.5
           fi
           sudo ldconfig
-          if command -v python2 >/dev/null 2>&1; then
-            sudo ln -sf "$(command -v python2)" /usr/local/bin/python
-          fi
 
       - name: Initialize and sync TWRP minimal manifest
         run: |
@@ -40,6 +37,14 @@ jobs:
           python3 ./repo init -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b twrp-9.0 --depth=1
           ./repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
           git clone https://github.com/Cosmic802/android_device_samsung_on7nlteskt.git device/samsung/on7nlteskt
+          python3 -c '
+          p = "build/make/tools/check_radio_versions.py"
+          with open(p, "r") as f:
+              txt = f.read()
+          txt = txt.replace("print \"*** Error opening \\\"%s.sha1\\\"; can\x27t verify %s\" % (fn, key)", "print(\"*** Error opening \\\"%s.sha1\\\"; can\x27t verify %s\" % (fn, key))")
+          with open(p, "w") as f:
+              f.write(txt)
+          '
 
       - name: Build recovery image
         run: |
